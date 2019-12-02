@@ -1,0 +1,6 @@
+sonarqube {
+  properties {
+    property "sonar.jacoco.reportPaths", "build/jacoco/test.exec"
+    property 'sonar.projectName', "cl-onedex-client"
+  }
+}

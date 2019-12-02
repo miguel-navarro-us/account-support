@@ -1,0 +1,58 @@
+buildscript {
+  ext { 
+    springBootVersion = '2.0.3.RELEASE' 
+  }
+  repositories { 
+    mavenCentral() 
+  }
+  dependencies { 
+    classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+  }
+}
+
+plugins {
+  id "org.sonarqube" version "2.7.1"
+  id 'jacoco'
+}
+
+apply plugin: 'eclipse'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: 'java'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'war'
+
+sourceCompatibility = 1.8
+
+repositories {
+  //Added to resolve the jasypt dependency
+  maven  { url 'https://repo.spring.io/libs-milestone' }
+  mavenCentral()
+}
+
+configurations {
+  // Exclude redis to avoid spring dependecies update
+  all*.exclude group: 'javax.servlet', module: "servlet-api"
+  all*.exclude group: 'org.springframework.session', module: "spring-session-data-redis"
+}
+
+dependencies {
+  compile('org.springframework.boot:spring-boot-starter-web')
+  compile 'org.hibernate.javax.persistence:hibernate-jpa-2.1-api:1.0.2.Final'
+  compile('org.springframework.boot:spring-boot-starter-data-jpa')
+  compile('org.springframework.boot:spring-boot-starter-data-rest')
+  compile('org.springframework.boot:spring-boot-starter-hateoas')
+  compile('org.springframework.data:spring-data-rest-hal-browser')
+  runtime('mysql:mysql-connector-java')
+  testCompile('org.springframework.boot:spring-boot-starter-test')
+  compile("com.h2database:h2:1.4.199")
+    
+}
+
+
+bootRun {
+    systemProperties = System.properties
+}
+
+bootRun {
+    standardInput = System.in
+}
