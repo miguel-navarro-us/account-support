@@ -1,9 +1,11 @@
 The application provides the option to perform operations through the command line. 
 Use the corresponding number to select a choice, type the requested information and type Enter.
+
 For example, given the above menu
     1 - Create new Account
     2 - Open existing Account
     3 - Exit
+	
 Type 2 if want to perform operations on an existing account. Then you will be requested to type the account number and PIN
 
 The public services to process debits and checks are on:
@@ -25,3 +27,9 @@ To start the application:
 
 To run the tests:
 ./gradlew test
+
+Java version:
+1.8
+
+Gradle version
+Gradle 4.10
