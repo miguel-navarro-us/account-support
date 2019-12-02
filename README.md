@@ -20,7 +20,7 @@ amount
 
 Response will be provided including operation result, description and transaction Id if applicable
 	
-A MySQL DB should be created, containing the corresponding tables for Transaction.java and Account.java classes
+DB creation script is included within this repository
 	
 To start the application:
 ./gradlew clean bootRun 
