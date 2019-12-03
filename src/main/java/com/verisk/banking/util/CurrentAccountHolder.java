@@ -1,10 +1,8 @@
 package com.verisk.banking.util;
 
-import org.springframework.stereotype.Component;
 import com.verisk.banking.jpa.Account;
 
-@Component
-public class SessionUtil {
+public class CurrentAccountHolder {
 
   private static Account currentAccount;
   

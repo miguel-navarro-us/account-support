@@ -13,7 +13,7 @@ import com.verisk.banking.jpa.Transaction;
 import com.verisk.banking.jpa.repository.AccountRepository;
 import com.verisk.banking.jpa.repository.TransactionRepository;
 import com.verisk.banking.service.AccountService;
-import com.verisk.banking.util.SessionUtil;
+import com.verisk.banking.util.CurrentAccountHolder;
 import com.verisk.banking.util.TransactionTypes;
 
 @Service
@@ -33,18 +33,18 @@ public class AccountServiceImpl implements AccountService {
     account.setLastName(accountInfo.getLastName());
     account.setPin(accountInfo.getPin());
     account.setHolderIdNumber(accountInfo.getAccountHolderIdNumber());
-    SessionUtil.setCurrentAccount(account);
+    CurrentAccountHolder.setCurrentAccount(account);
     return accountRepository.save(account);
   }
   
   @Override
   public boolean closeAccount() {
-    Account account = SessionUtil.getCurrentAccount();
+    Account account = CurrentAccountHolder.getCurrentAccount();
     account.setDeleted(true);
 
     try {
       accountRepository.save(account);
-      SessionUtil.setCurrentAccount(null);
+      CurrentAccountHolder.setCurrentAccount(null);
       return true;
     } catch (OptimisticLockException e) {
       System.out.println("Account cannot be closed as is being used somewhere else. Try again");
@@ -53,53 +53,82 @@ public class AccountServiceImpl implements AccountService {
   }
   
   @Override
-  public TransactionResult makeTransaction(float amount, String description, 
+  public void makeTransactionFromConsole(float amount, String description, 
       TransactionTypes type) {
-    TransactionResult trResult = new TransactionResult();
-    String resultDescription = "";
-    Account account = SessionUtil.getCurrentAccount();
-    if (type.equals(TransactionTypes.DEPOSIT) || type.equals(TransactionTypes.DEBIT)) {
-      account.setCurrentBalance(account.getCurrentBalance() + amount);      
+    Account account = CurrentAccountHolder.getCurrentAccount();
+    
+    boolean updatedBalance = this.updateAccountBalance(account, type, amount);
+    if (updatedBalance) {
+      try {
+        CurrentAccountHolder.setCurrentAccount(accountRepository.save(account));
+      } catch(OptimisticLockException e) {
+        System.out.println("Account is being modified by someone else. Try again");
+      }
+    } else {
+      System.out.println("The account does not have enough funds to support this transaction");    
+      return;
+    }
+    
+    Transaction transaction = this.createTransaction(account, description, amount, type);
+    System.out.println("Operation completed successfully");
+    System.out.println("Your transaction id is " + transaction.getId());
+  }
+  
+  private boolean updateAccountBalance(Account account, TransactionTypes type, float amount) {
+    if (type.equals(TransactionTypes.DEBIT) || type.equals(TransactionTypes.DEPOSIT)) {
+      account.setCurrentBalance(account.getCurrentBalance() + amount);
+      return true;
     } else {
       float currentBalance = account.getCurrentBalance();
       if (currentBalance < amount) {
-        resultDescription = "The account does not have enough funds to support this transaction";
-        trResult.setResult("FAIL");
-        trResult.setDescription(resultDescription);
-        System.out.println(resultDescription);
-        return trResult;
+        return false;
       } else {
         account.setCurrentBalance(currentBalance - amount);
-      }
-    }
-    try {
-      SessionUtil.setCurrentAccount(accountRepository.save(account));
-    } catch(OptimisticLockException e) {
-      resultDescription = "Account is modified by someone else. Try again";
-      trResult.setDescription(resultDescription);
-      trResult.setResult("FAIL");
-      System.out.println(resultDescription);
-      return trResult;
-    }
-    Transaction transaction = this.createTransaction(account, description, amount, type);
-    resultDescription = "Operation completed successfully";
-    System.out.println(resultDescription);
-    System.out.println("Your transaction id is " + transaction.getId());
+        return true;
+      }      
+    }    
+  }
+  
+  @Override
+  public TransactionResult makeTransactionFromEndpoint(Account account, float amount, String description, 
+      TransactionTypes type) {
+    TransactionResult trResult = new TransactionResult();
+    String resultDescription = "";
     
+    boolean balanceUpdated = this.updateAccountBalance(account, type, amount);
+    if (balanceUpdated) {
+      try {
+        accountRepository.save(account);
+      } catch(OptimisticLockException e) {
+        resultDescription = "Account is being modified by someone else. Try again";
+        trResult.setDescription(resultDescription);
+        trResult.setResult("FAIL");
+        System.out.println(resultDescription);
+        return trResult;
+      }
+    } else {
+      resultDescription = "The account does not have enough funds to support this transaction";
+      trResult.setResult("FAIL");
+      trResult.setDescription(resultDescription);
+      return trResult;      
+    }
+    
+    Transaction transaction = this.createTransaction(account, description, amount, type);
+    resultDescription = "Operation completed successfully";    
     trResult.setResult("SUCCESS");
     trResult.setDescription(resultDescription);
     trResult.setTransactionId(transaction.getId());
     
     return trResult;
   }
-  
+
   @Override
   public boolean isValidPin(long accountNumber, int pin) {
     Optional<Account> opt = accountRepository.findById(accountNumber);
     if (opt.isPresent()) {
       Account account = opt.get();
       if (account.getPin() == pin && !account.isDeleted()) {
-        SessionUtil.setCurrentAccount(account);
+        CurrentAccountHolder.setCurrentAccount(account);
         return true;
       }
     }
@@ -119,7 +148,7 @@ public class AccountServiceImpl implements AccountService {
   }
   
   public float getCurrentBalance() {
-    Account account = SessionUtil.getCurrentAccount();
+    Account account = CurrentAccountHolder.getCurrentAccount();
     return account.getCurrentBalance();
   }
 }

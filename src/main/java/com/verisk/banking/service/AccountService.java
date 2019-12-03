@@ -9,7 +9,8 @@ public interface AccountService {
   
   public Account createAccount(AccountRequest accountInfo);
   public boolean closeAccount ();
-  public TransactionResult makeTransaction(float amount, String description, TransactionTypes type);
+  public void makeTransactionFromConsole(float amount, String description, TransactionTypes type);
+  public TransactionResult makeTransactionFromEndpoint(Account account, float amount, String description, TransactionTypes type);
   public float getCurrentBalance();
   public boolean isValidPin(long accountNumber, int pin);
 

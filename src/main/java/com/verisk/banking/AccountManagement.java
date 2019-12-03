@@ -1,5 +1,6 @@
 package com.verisk.banking;
 
+import java.util.InputMismatchException;
 import java.util.Scanner;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -9,10 +10,9 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
 import org.springframework.context.annotation.Profile;
 import com.verisk.banking.dto.AccountRequest;
-import com.verisk.banking.dto.TransactionResult;
 import com.verisk.banking.jpa.Account;
 import com.verisk.banking.service.AccountService;
-import com.verisk.banking.util.SessionUtil;
+import com.verisk.banking.util.CurrentAccountHolder;
 import com.verisk.banking.util.TransactionTypes;
 
 @SpringBootApplication
@@ -47,6 +47,9 @@ public class AccountManagement extends SpringBootServletInitializer implements C
       this.accessExistingAccount(scanner);
     } else if (selection.equals("3")) {
       System.exit(0);
+    } else {
+      System.out.println("Invalid option");
+      this.displayInitialMenu();
     }
   }
   
@@ -64,8 +67,10 @@ public class AccountManagement extends SpringBootServletInitializer implements C
       String selection = scanner.next();
       if (selection.equals("1")) {
         accessExistingAccount(scanner);
-      } else {
+      } else if (selection.equals("2")) {
         this.displayInitialMenu();
+      } else {
+        System.out.println("Invalid option");
       }
     }
   }
@@ -96,11 +101,15 @@ public class AccountManagement extends SpringBootServletInitializer implements C
       case "5":
         this.logout(scanner);
         break;
+      default: 
+        System.out.println("Invalid option");
+        this.displayAccountMenu(scanner);
+        break;
     }
   }
   
   private void logout(Scanner scanner) {
-    SessionUtil.setCurrentAccount(null);
+    CurrentAccountHolder.setCurrentAccount(null);
     this.displayInitialMenu();
   }
   
@@ -118,15 +127,30 @@ public class AccountManagement extends SpringBootServletInitializer implements C
       }
     } else if (selection.equals("2")) {
       this.displayAccountMenu(scanner);
+    } else {
+      System.out.println("Invalid Option");
+      this.closeAccount(scanner);
     }
   }
   
   private void makeTransaction(TransactionTypes type, Scanner scanner) {
     System.out.println("Capture the amount of the operation ");
-    float amount = scanner.nextFloat();
+    float amount = 0;
+    while (amount == 0) {
+      try {
+        amount = scanner.nextFloat();      
+      } catch(InputMismatchException e) {
+        System.out.println("For amount, capture a numeric value greather than 0");
+        scanner = new Scanner(System.in);
+      }
+    }
     System.out.println("Type the description of the operation");
     String description = scanner.next();
-    accountService.makeTransaction(amount, description, type);    
+    try {
+      accountService.makeTransactionFromConsole(amount, description, type);          
+    } catch(Exception e ) {
+      System.out.println("Transaction could not be performed. Try again later ");
+    }
     this.displayAccountMenu(scanner);
   }
   
@@ -137,10 +161,27 @@ public class AccountManagement extends SpringBootServletInitializer implements C
     System.out.println("Capture the lastName");
     accountRequest.setLastName(scanner.next());
     System.out.println("Capture a 4 digit PIN");
-    accountRequest.setPin(scanner.nextInt()); 
-    System.out.println("Capture your id number");
-    accountRequest.setAccountHolderIdNumber(scanner.nextLong());
-    Account account = accountService.createAccount(accountRequest);
+    try {
+      int pin = scanner.nextInt();
+      while (pin < 1000 || pin > 9999) {
+        System.out.println("PIN should be 4 digits. Please type a correct PIN");
+        pin = scanner.nextInt();
+      }
+      accountRequest.setPin(pin); 
+      System.out.println("Capture your id number");
+      accountRequest.setAccountHolderIdNumber(scanner.nextLong());
+    } catch(InputMismatchException e) {
+      System.out.println("Account could not be created. Use numeric values for the Id number and the PIN");
+      scanner = new Scanner(System.in);
+      this.createNewAccount(scanner);
+    }
+    Account account = null;
+    try {
+      account = accountService.createAccount(accountRequest);      
+    } catch(Exception e) {
+      System.out.println("Account could not be created. Try again later");
+      this.displayInitialMenu();
+    }
     System.out.println("Your account number is " + account.getAccountNumber());
     this.displayAccountMenu(scanner);
   }
@@ -149,5 +190,6 @@ public class AccountManagement extends SpringBootServletInitializer implements C
   protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
     return application.sources(AccountManagement.class);
   }
+  
 
 }

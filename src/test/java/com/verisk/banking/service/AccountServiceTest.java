@@ -17,7 +17,7 @@ import com.verisk.banking.jpa.Account;
 import com.verisk.banking.jpa.repository.AccountRepository;
 import com.verisk.banking.jpa.repository.TransactionRepository;
 import com.verisk.banking.service.impl.AccountServiceImpl;
-import com.verisk.banking.util.SessionUtil;
+import com.verisk.banking.util.CurrentAccountHolder;
 import com.verisk.banking.util.TransactionTypes;
 
 @RunWith(SpringRunner.class)
@@ -70,7 +70,7 @@ public class AccountServiceTest {
     
     Account account = new Account();
     account.setDeleted(false);
-    SessionUtil.setCurrentAccount(account);
+    CurrentAccountHolder.setCurrentAccount(account);
         
     accountService.closeAccount();
 
@@ -82,14 +82,12 @@ public class AccountServiceTest {
   }
 
   @Test
-  public void testDeposit(){
+  public void testDepositEndpoint(){
     
     Account account = new Account();
     account.setDeleted(false);
     
-    SessionUtil.setCurrentAccount(account);
-        
-    TransactionResult result = accountService.makeTransaction(20f, "deposito", TransactionTypes.DEPOSIT);
+    TransactionResult result = accountService.makeTransactionFromEndpoint(account, 20f, "deposito", TransactionTypes.DEPOSIT);
 
     Mockito.when(accountRepository.save(account))
     .thenReturn(account);
@@ -101,15 +99,13 @@ public class AccountServiceTest {
   }
 
   @Test
-  public void testWithdrawalNotEnoghFunds(){
+  public void testWithdrawalEndpointNotEnoghFunds(){
     
     Account account = new Account();
     account.setDeleted(false);
     account.setCurrentBalance(20);
     
-    SessionUtil.setCurrentAccount(account);
-        
-    TransactionResult result = accountService.makeTransaction(30f, "withdrawal", TransactionTypes.WITHDRAWAL);
+    TransactionResult result = accountService.makeTransactionFromEndpoint(account, 30f, "withdrawal", TransactionTypes.WITHDRAWAL);
 
     Mockito.when(accountRepository.save(account))
     .thenReturn(account);
@@ -120,15 +116,13 @@ public class AccountServiceTest {
   }
 
   @Test
-  public void testWithdrawalEnoghFunds(){
+  public void testWithdrawalEndpointEnoghFunds(){
     
     Account account = new Account();
     account.setDeleted(false);
     account.setCurrentBalance(30);
-    
-    SessionUtil.setCurrentAccount(account);
         
-    TransactionResult result = accountService.makeTransaction(20f, "withdrawal", TransactionTypes.WITHDRAWAL);
+    TransactionResult result = accountService.makeTransactionFromEndpoint(account, 20f, "withdrawal", TransactionTypes.WITHDRAWAL);
 
     Mockito.when(accountRepository.save(account))
     .thenReturn(account);
@@ -139,12 +133,60 @@ public class AccountServiceTest {
   }
 
   @Test
+  public void testDepositConsoleEndpoint(){
+    
+    Account account = new Account();
+    account.setDeleted(false);
+    CurrentAccountHolder.setCurrentAccount(account);
+    
+    accountService.makeTransactionFromConsole(20f, "deposito", TransactionTypes.DEPOSIT);
+
+    Mockito.when(accountRepository.save(account))
+    .thenReturn(account);
+    
+    assertTrue(account.getCurrentBalance() == 20f);
+  }
+
+  @Test
+  public void testWithdrawalConsoleNotEnoghFunds(){
+    
+    Account account = new Account();
+    account.setDeleted(false);
+    account.setCurrentBalance(20);
+    CurrentAccountHolder.setCurrentAccount(account);
+    
+    accountService.makeTransactionFromConsole(30f, "withdrawal", TransactionTypes.WITHDRAWAL);
+
+    Mockito.when(accountRepository.save(account))
+    .thenReturn(account);
+    
+    assertTrue(account.getCurrentBalance() == 20f);
+  }
+
+  @Test
+  public void testWithdrawalConsoleEnoghFunds(){
+    
+    Account account = new Account();
+    account.setDeleted(false);
+    account.setCurrentBalance(30);
+    CurrentAccountHolder.setCurrentAccount(account);
+        
+    accountService.makeTransactionFromConsole(20f, "withdrawal", TransactionTypes.WITHDRAWAL);
+
+    Mockito.when(accountRepository.save(account))
+    .thenReturn(account);
+    
+    assertTrue(account.getCurrentBalance() == 10f);
+    
+  }
+
+  @Test
   public void testCurrentBalance(){
     
     Account account = new Account();
     account.setCurrentBalance(30);
     
-    SessionUtil.setCurrentAccount(account);
+    CurrentAccountHolder.setCurrentAccount(account);
     
     assertTrue(accountService.getCurrentBalance() == 30);
     
