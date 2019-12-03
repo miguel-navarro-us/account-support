@@ -24,7 +24,6 @@ apply plugin: 'war'
 sourceCompatibility = 1.8
 
 repositories {
-  //Added to resolve the jasypt dependency
   maven  { url 'https://repo.spring.io/libs-milestone' }
   mavenCentral()
 }
